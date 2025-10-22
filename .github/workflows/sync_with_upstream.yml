@@ -2,7 +2,7 @@ name: Sync Fork Upstream
 
 on:
   schedule:
-    - cron: '0 0 * * 7'  # On sunday at midnight
+    - cron: '0 0 * * SUN'  # On sunday at midnight
   workflow_dispatch:     # Manual trigger
 
 jobs:
