@@ -9,7 +9,7 @@ using AcsEmulatorAPI.Models;
 using AcsEmulatorAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -49,19 +49,9 @@ builder.Services.AddSwaggerGen(options =>
 		Type = SecuritySchemeType.Http,
 		In = ParameterLocation.Header
 	});
-	options.AddSecurityRequirement(new OpenApiSecurityRequirement
+	options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
 	{
-		{
-			new OpenApiSecurityScheme
-			{
-				Reference = new OpenApiReference
-				{
-					Id = "user auth",
-					Type = ReferenceType.SecurityScheme
-				}
-			},
-			new List<string>()
-		}
+		[new OpenApiSecuritySchemeReference("user auth", document)] = []
 	});
 });
 
@@ -103,9 +93,7 @@ otel.WithTracing(tracing =>
 {
     tracing.AddAspNetCoreInstrumentation();
     tracing.AddHttpClientInstrumentation();
-	tracing.AddSqlClientInstrumentation(
-        options => options.SetDbStatementForText = true
-		);
+	tracing.AddSqlClientInstrumentation();
     if (!string.IsNullOrEmpty(tracingOtlpEndpoint))
     {
         tracing.AddOtlpExporter(otlpOptions =>

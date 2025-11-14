@@ -15,32 +15,32 @@ class Program
 		Command connectionString = new("connectionString", description: "Get the ACS connection string for the emulator.");
 		Command repo = new("repo", description: "Open code repository.");
 
-		run.SetHandler(Run);
-		openApi.SetHandler(OpenSwaggerUI);
-		openDB.SetHandler(OpenDB);
-		openUI.SetHandler(OpenUI);
-		clean.SetHandler(CleanDB);
-		connectionString.SetHandler(GetConnectionString);
-		repo.SetHandler(OpenRepo);
+		run.SetAction(Run);
+		openApi.SetAction(OpenSwaggerUI);
+		openDB.SetAction(OpenDB);
+		openUI.SetAction(OpenUI);
+		clean.SetAction(CleanDB);
+		connectionString.SetAction(GetConnectionString);
+		repo.SetAction(OpenRepo);
 
-		rootCommand.AddCommand(run);
-		rootCommand.AddCommand(openApi);
-		rootCommand.AddCommand(openDB);
-		rootCommand.AddCommand(openUI);
-		rootCommand.AddCommand(clean);
-		rootCommand.AddCommand(connectionString);
-		rootCommand.AddCommand(repo);
+		rootCommand.Subcommands.Add(run);
+		rootCommand.Subcommands.Add(openApi);
+		rootCommand.Subcommands.Add(openDB);
+		rootCommand.Subcommands.Add(openUI);
+		rootCommand.Subcommands.Add(clean);
+		rootCommand.Subcommands.Add(connectionString);
+		rootCommand.Subcommands.Add(repo);
 
-		return await rootCommand.InvokeAsync(args);
+        return await rootCommand.Parse(args).InvokeAsync();
 	}
 
-	private static async Task Run()
+	private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
 	{
-		_ = StartEmulator();
-		await OpenUI();
+		_ = StartEmulator(cancellationToken);
+		OpenUI(parseResult);
 	}
 
-	private static Task StartEmulator()
+	private static Task StartEmulator(CancellationToken cancellationToken)
 	{
 		using Process proc = new();
 		proc.StartInfo.WorkingDirectory = AppContext.BaseDirectory;
@@ -48,12 +48,12 @@ class Program
 		proc.StartInfo.Arguments = "--additional-deps AcsEmulatorCLI.deps.json AcsEmulatorAPI.dll --urls=https://localhost/";
 		proc.StartInfo.UseShellExecute = true;
 		proc.Start();
-		return proc.WaitForExitAsync();
+		return proc.WaitForExitAsync(cancellationToken);
 	}
 
-	private static void OpenSwaggerUI() => Process.Start(new ProcessStartInfo("https://localhost/swagger") { UseShellExecute = true });
+	private static void OpenSwaggerUI(ParseResult parseResult) => Process.Start(new ProcessStartInfo("https://localhost/swagger") { UseShellExecute = true });
 
-	private static void OpenDB()
+	private static void OpenDB(ParseResult parseResult)
 	{
 		try
 		{
@@ -61,24 +61,24 @@ class Program
 		}
 		catch (Exception ex)
 		{
-			if (ex.Message.Contains("cannot find the file"))
+            if (ex.Message.Contains("cannot find the file"))
 				Console.WriteLine("Please first run 'acs-emulator run' to create the database.");
 			else
 				Console.WriteLine(ex.Message);
 		}
 	}
 
-	private static void OpenUI() => Process.Start(new ProcessStartInfo("https://localhost") { UseShellExecute = true });
+	private static void OpenUI(ParseResult parseResult) => Process.Start(new ProcessStartInfo("https://localhost") { UseShellExecute = true });
 
-	private static void OpenRepo() => Process.Start(new ProcessStartInfo("https://github.com/DominikMe/acs-emulator") { UseShellExecute = true });
+    private static void OpenRepo(ParseResult parseResult) => Process.Start(new ProcessStartInfo("https://github.com/DominikMe/acs-emulator") { UseShellExecute = true });
 
-	private static void CleanDB()
+	private static void CleanDB(ParseResult parseResult)
 	{
 		var path = $"{AppContext.BaseDirectory}/AcsEmulator.db";
 		if (File.Exists(path))
 			File.Delete(path);
 	}
 
-	private static void GetConnectionString() => Console.WriteLine("endpoint=https://localhost/;accessKey=pw==");
+	private static void GetConnectionString(ParseResult parseResult) => Console.WriteLine("endpoint=https://localhost/;accessKey=pw==");
 
 }
