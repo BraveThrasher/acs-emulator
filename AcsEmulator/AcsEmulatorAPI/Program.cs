@@ -126,6 +126,9 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 using (var scope = app.Services.CreateScope())
 {
 	var services = scope.ServiceProvider;
@@ -151,6 +154,8 @@ app.MapGroup("").MapEmailsApi();
 app.Services.GetService<Trouter>()!.AddEndpoints(app);
 app.Services.GetService<CallAutomationWebSockets>()!.AddEndpoints(app);
 app.Services.GetService<CallAutomationController>()!.AddEndpoints(app);
+
+app.MapFallbackToFile("index.html");
 
 app.Run();
 

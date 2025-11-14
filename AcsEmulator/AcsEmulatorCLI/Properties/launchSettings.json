@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "AcsEmulatorCLI": {
+      "commandName": "Project",
+      "commandLineArgs": "run"
+    }
+  }
+}

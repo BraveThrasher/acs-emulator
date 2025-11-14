@@ -68,34 +68,7 @@ class Program
 		}
 	}
 
-	private static async Task OpenUI()
-	{
-		try
-		{
-			using Process install = new();
-			install.StartInfo.WorkingDirectory = AppContext.BaseDirectory;
-			install.StartInfo.FileName = "npm";
-			install.StartInfo.Arguments = "install -g serve";
-			install.StartInfo.UseShellExecute = true;
-			install.Start();
-			install.WaitForExit();
-
-			using Process serve = new();
-			serve.StartInfo.WorkingDirectory = AppContext.BaseDirectory;
-			serve.StartInfo.FileName = "serve";
-			serve.StartInfo.Arguments = "-s .";
-			serve.StartInfo.UseShellExecute = true;
-			serve.Start();
-
-			await Task.Delay(3000);
-
-			Process.Start(new ProcessStartInfo("http://localhost:3000") { UseShellExecute = true });
-		}
-		catch (Exception ex)
-		{
-			Console.WriteLine(ex.Message);
-		}
-	}
+	private static void OpenUI() => Process.Start(new ProcessStartInfo("https://localhost") { UseShellExecute = true });
 
 	private static void OpenRepo() => Process.Start(new ProcessStartInfo("https://github.com/DominikMe/acs-emulator") { UseShellExecute = true });
 
