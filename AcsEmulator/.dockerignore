@@ -1,0 +1,78 @@
+# Keep local helper scripts out of the build context
+createSelfSignedCert.ps1
+
+# Build outputs (reduce context size)
+bin/
+obj/
+**/bin/
+**/obj/
+
+# Visual Studio / editor state
+.vs/
+.vscode/
+.idea/
+
+# User-specific and temporary files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.log
+*.tmp
+tmp/
+temp/
+
+# Git and CI metadata (not needed in image)
+.git
+.gitignore
+.github
+
+# NuGet / packages
+packages/
+*.nupkg
+
+# Docker compose or local orchestration files (if you don't want them in context)
+docker-compose*.yml
+docker-compose*.yaml
+
+# Local dev configuration / secrets - don't leak into image context
+**/appsettings.Development.json
+**/Properties/launchSettings.json
+secrets.json
+secrets/
+*.pfx
+!acsEmulator_SelfSigned.pfx
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# React / Node.js (frontend)
+node_modules/
+**/node_modules/
+
+# Local build / dev artifacts
+build/
+dist/
+.cache/
+coverage/
+.nyc_output/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files (don’t send secrets)
+.env
+.env.local
+.env.*.local
+
+# Framework-specific output (Next.js / Vercel)
+.next/
+out/
+.vercel/
+
+# Static/cache or bundler files
+.pnp.*
+.eslintcache
