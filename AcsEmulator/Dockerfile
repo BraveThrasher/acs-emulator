@@ -11,17 +11,11 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build-net
 WORKDIR /app
 
 COPY AcsEmulatorAPI/*.csproj ./AcsEmulatorAPI/
-COPY AcsEmulatorAPI.Tests/*.csproj ./AcsEmulatorAPI.Tests/
 COPY NuGet.config ./
 
 RUN dotnet restore AcsEmulatorAPI --configfile ./NuGet.config
-RUN dotnet restore AcsEmulatorAPI.Tests --configfile ./NuGet.config
 
 COPY AcsEmulatorAPI ./AcsEmulatorAPI/
-COPY AcsEmulatorAPI.Tests ./AcsEmulatorAPI.Tests/
-
-WORKDIR /app/AcsEmulatorAPI.Tests
-RUN dotnet test
 
 WORKDIR /app/AcsEmulatorAPI
 RUN dotnet build
@@ -33,10 +27,17 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 COPY --from=build-net /app/AcsEmulatorAPI/out .
 
-ENV ASPNETCORE_URLS=https://0.0.0.0;http://0.0.0.0
-ENV ASPNETCORE_HTTP_PORTS=8080
+VOLUME ["/data"]
+
 ENV ASPNETCORE_HTTPS_PORTS=443
-EXPOSE 8080
+
+RUN mkdir -p /https /data \
+    && addgroup --system appgroup \
+    && adduser --system --ingroup appgroup appuser \
+    && chown -R appuser:appgroup /app /https /data
+
 EXPOSE 443
 
-CMD ["dotnet", "--additional-deps", "AcsEmulatorAPI.deps.json", "AcsEmulatorAPI.dll"]
+USER appuser
+
+CMD ["dotnet", "AcsEmulatorAPI.dll"]

@@ -4,6 +4,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Title>Emulator for Azure Communication Services</Title>
+    <Version>$(VersionPrefix)</Version>
+	<VersionPrefix>0.1.1</VersionPrefix>
+	<VersionSuffix>alpha</VersionSuffix>  
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="ACSEmulatorAPI.Tests" />
@@ -22,7 +25,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="9.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.11" />
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <None Update="acsEmulator_SelfSigned.pfx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

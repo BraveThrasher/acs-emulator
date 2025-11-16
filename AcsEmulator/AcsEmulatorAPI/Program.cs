@@ -126,6 +126,24 @@ using (var scope = app.Services.CreateScope())
 	// TODO: seed data if we want
 }
 
+// Lightweight, unauthenticated health endpoint for orchestrator probes.
+app.MapGet("/health", async (IServiceProvider services, CancellationToken ct) =>
+{
+	try
+	{
+		// Check DB connectivity quickly; return a small JSON payload.
+		using var scope = services.CreateScope();
+		var db = scope.ServiceProvider.GetRequiredService<AcsDbContext>();
+		var dbOk = await db.Database.CanConnectAsync(ct);
+		var status = dbOk ? "Healthy" : "Degraded";
+		return Results.Ok(new { status, database = dbOk });
+	}
+	catch
+	{
+		return Results.StatusCode(503);
+	}
+}).AllowAnonymous();
+
 app.UseHttpsRedirection();
 app.UseCors();
 

@@ -1,0 +1,182 @@
+name: CI
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  build-and-test:
+    name: Build and test (.NET 8)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore AcsEmulatorAPI --configfile NuGet.config
+
+      - name: Build (Release)
+        run: dotnet build AcsEmulatorAPI -c Release --no-restore
+
+      - name: Run unit tests
+        run: dotnet test AcsEmulatorAPI.Tests --no-build --verbosity normal
+
+  build-and-push-image:
+    name: Build and push Docker image
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/acs-emulator
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build VERSION and compute per-day counter from Docker Hub
+        id: version
+        run: |
+          set -euo pipefail
+          CSPROJ=./AcsEmulatorAPI/AcsEmulatorAPI.csproj
+
+          # Helper: get property value from csproj
+          get_prop() { grep -oP "(?<=<${1}>)[^<]+" "$CSPROJ" 2>/dev/null || true; }
+
+          # Read raw <Version> (may be literal or a MSBuild variable reference like $(VersionPrefix))
+          VERSION_RAW=$(grep -oP '(?<=<Version>)[^<]+' "$CSPROJ" 2>/dev/null || true)
+
+          # Resolve $(X) references if present
+          if echo "$VERSION_RAW" | grep -qP '^\$\([^)]+\)$'; then
+            REF=$(echo "$VERSION_RAW" | grep -oP '(?<=\$\()[^)]+(?=\))')
+            VERSION_BASE=$(get_prop "$REF")
+          else
+            VERSION_BASE="$VERSION_RAW"
+          fi
+
+          # Fallbacks
+          VERSION_BASE="${VERSION_BASE:-$(get_prop 'Version')}"
+          VERSION_BASE="${VERSION_BASE:-$(get_prop 'VersionPrefix')}"
+          VERSION_BASE="${VERSION_BASE:-$(get_prop 'PackageVersion')}"
+          VERSION_BASE="${VERSION_BASE:-$(get_prop 'AssemblyVersion')}"
+          VERSION_BASE="${VERSION_BASE:-0.0.0}"
+
+          # Append VersionSuffix if present
+          VERSION_SUFFIX=$(get_prop 'VersionSuffix')
+          if [ -n "$VERSION_SUFFIX" ]; then
+            VERSION_BASE="${VERSION_BASE}-${VERSION_SUFFIX}"
+          fi
+
+          DATE=$(date -u +%Y%m%d)
+          BASE_TAG="${VERSION_BASE}.${DATE}"
+          echo "Base tag: ${BASE_TAG}"
+
+          # Prepare Docker Hub repo info from IMAGE env (format: user/repo)
+          REPO_FULL="${IMAGE:-}"
+          if [ -z "$REPO_FULL" ]; then
+            echo "IMAGE env not set; using BASE_TAG. Will not query Docker Hub."
+            VERSION="${BASE_TAG}.1"
+            echo "VERSION=${VERSION}" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          USERNAME=$(echo "$REPO_FULL" | cut -d'/' -f1)
+          REPO=$(echo "$REPO_FULL" | cut -d'/' -f2-)
+
+          echo "Querying tags for ${USERNAME}/${REPO} on Docker Hub..."
+
+          # ensure jq & curl available
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends curl jq
+          rm -rf /var/lib/apt/lists/*
+
+          AUTH=""
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            AUTH="-u${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}"
+          fi
+
+          PAGE_URL="https://hub.docker.com/v2/repositories/${USERNAME}/${REPO}/tags?page_size=100"
+          TAGS_LIST=""
+          while [ -n "$PAGE_URL" ]; do
+            RESP=$(curl -s $AUTH "$PAGE_URL")
+            PAGE_TAGS=$(echo "$RESP" | jq -r '.results[].name' 2>/dev/null || true)
+            TAGS_LIST="${TAGS_LIST}"$'\n'"${PAGE_TAGS}"
+            PAGE_URL=$(echo "$RESP" | jq -r '.next // empty' 2>/dev/null || true)
+          done
+
+          TAGS=$(echo "$TAGS_LIST" | sed '/^[[:space:]]*$/d' || true)
+
+          # find existing tags matching BASE_TAG or BASE_TAG.N
+          MAX=0
+          while read -r t; do
+            if [ -z "$t" ]; then continue; fi
+            if echo "$t" | grep -qE "^${BASE_TAG}(\.[0-9]+)?$"; then
+              if echo "$t" | grep -qE "^${BASE_TAG}\.[0-9]+$"; then
+                n=$(echo "$t" | sed -E "s/^${BASE_TAG}\.([0-9]+)$/\1/")
+                if [ -n "$n" ] && [ "$n" -gt "$MAX" ]; then
+                  MAX=$n
+                fi
+              else
+                # exact base tag counts as existing; treat as counter 1 existing
+                if [ "$MAX" -lt 1 ]; then MAX=1; fi
+              fi
+            fi
+          done <<< "$TAGS"
+
+          if [ "$MAX" -eq 0 ]; then
+            NEXT=1
+          else
+            NEXT=$((MAX + 1))
+          fi
+
+          VERSION="${BASE_TAG}.${NEXT}"
+          echo "Final VERSION: ${VERSION}"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "VERSION_BASE=${VERSION_BASE}" >> $GITHUB_ENV
+          echo "DATE=${DATE}" >> $GITHUB_ENV
+
+      - name: Build and push image (tags + version label)
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:${{ env.VERSION }}
+          labels: |
+            org.opencontainers.image.version=${{ env.VERSION }}
+            org.opencontainers.image.source=https://github.com/BraveThrasher/acs-emulator
+            org.opencontainers.image.license="MIT"
+          platforms: linux/amd64
+
+      - name: Tag and push 'latest' (only on main)
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.version=${{ env.VERSION }}
+            org.opencontainers.image.source=https://github.com/BraveThrasher/acs-emulator
+            org.opencontainers.image.license="MIT"
+          platforms: linux/amd64

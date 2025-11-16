@@ -2,7 +2,10 @@
   "profiles": {
     "AcsEmulatorCLI": {
       "commandName": "Project",
-      "commandLineArgs": "run"
+      "commandLineArgs": "run",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
     }
   }
 }
