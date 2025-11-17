@@ -30,7 +30,7 @@ jobs:
           dotnet build ./AcsEmulator/AcsEmulatorAPI.Tests/AcsEmulatorAPI.Tests.csproj -c Release --no-restore
 
       - name: Run unit tests
-        run: dotnet test ./AcsEmulator/AcsEmulatorAPI.Tests/AcsEmulatorAPI.Tests.csproj --no-build --verbosity diag
+        run: dotnet test ./AcsEmulator/AcsEmulatorAPI.Tests/AcsEmulatorAPI.Tests.csproj --verbosity diag
 
   build-and-push-image:
     name: Build and push Docker image
