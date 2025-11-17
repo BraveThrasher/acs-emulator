@@ -19,14 +19,18 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore
-        run: dotnet restore ./AcsEmulator/AcsEmulatorAPI --configfile ./AcsEmulator/NuGet.config
+      - name: Restore (explicit projects)
+        run: |
+          dotnet restore ./AcsEmulator/AcsEmulatorAPI/AcsEmulatorAPI.csproj --configfile ./AcsEmulator/NuGet.config
+          dotnet restore ./AcsEmulator/AcsEmulatorAPI.Tests/AcsEmulatorAPI.Tests.csproj --configfile ./AcsEmulator/NuGet.config
 
-      - name: Build (Release)
-        run: dotnet build ./AcsEmulator/AcsEmulatorAPI -c Release --no-restore
+      - name: Build (Release) projects
+        run: |
+          dotnet build ./AcsEmulator/AcsEmulatorAPI/AcsEmulatorAPI.csproj -c Release --no-restore
+          dotnet build ./AcsEmulator/AcsEmulatorAPI.Tests/AcsEmulatorAPI.Tests.csproj -c Release --no-restore
 
       - name: Run unit tests
-        run: dotnet test ./AcsEmulator/AcsEmulatorAPI.Tests --no-build --verbosity normal
+        run: dotnet test ./AcsEmulator/AcsEmulatorAPI.Tests/AcsEmulatorAPI.Tests.csproj --no-build --verbosity normal
 
   build-and-push-image:
     name: Build and push Docker image
