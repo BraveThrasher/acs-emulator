@@ -158,7 +158,7 @@ jobs:
       - name: Build and push image (tags + version label)
         uses: docker/build-push-action@v4
         with:
-          context: .
+          context: ./AcsEmulator
           file: ./AcsEmulator/Dockerfile
           push: true
           tags: |
@@ -174,7 +174,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v4
         with:
-          context: .
+          context: ./AcsEmulator
           file: ./AcsEmulator/Dockerfile
           push: true
           tags: |
