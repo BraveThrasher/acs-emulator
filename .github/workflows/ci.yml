@@ -20,7 +20,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore
-        run: dotnet restore ./AcsEmulator/AcsEmulatorAPI --configfile NuGet.config
+        run: dotnet restore ./AcsEmulator/AcsEmulatorAPI --configfile ./AcsEmulator/NuGet.config
 
       - name: Build (Release)
         run: dotnet build ./AcsEmulator/AcsEmulatorAPI -c Release --no-restore
