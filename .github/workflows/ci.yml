@@ -20,13 +20,13 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore
-        run: dotnet restore AcsEmulatorAPI --configfile NuGet.config
+        run: dotnet restore ./AcsEmulator/AcsEmulatorAPI --configfile NuGet.config
 
       - name: Build (Release)
-        run: dotnet build AcsEmulatorAPI -c Release --no-restore
+        run: dotnet build ./AcsEmulator/AcsEmulatorAPI -c Release --no-restore
 
       - name: Run unit tests
-        run: dotnet test AcsEmulatorAPI.Tests --no-build --verbosity normal
+        run: dotnet test ./AcsEmulator/AcsEmulatorAPI.Tests --no-build --verbosity normal
 
   build-and-push-image:
     name: Build and push Docker image
@@ -54,7 +54,7 @@ jobs:
         id: version
         run: |
           set -euo pipefail
-          CSPROJ=./AcsEmulatorAPI/AcsEmulatorAPI.csproj
+          CSPROJ=./AcsEmulator/AcsEmulatorAPI/AcsEmulatorAPI.csproj
 
           # Helper: get property value from csproj
           get_prop() { grep -oP "(?<=<${1}>)[^<]+" "$CSPROJ" 2>/dev/null || true; }
